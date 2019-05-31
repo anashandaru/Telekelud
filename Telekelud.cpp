@@ -137,7 +137,7 @@ void Telekelud::repeaterService(){
 }
 
 void Telekelud::senderServicePS(){
-	sleep(_interval);
+	sleep();
 	_vbatSender = analogRead(VBATPIN);
 	sendMessage();
 }
@@ -146,7 +146,7 @@ void Telekelud::repeaterServicePS(){
 	if(!listen()) return;
     _vbatRepeater = analogRead(VBATPIN);
 	sendMessage();
-	sleep(_interval);
+	sleep();
 	listenMode();
 }
 
@@ -154,8 +154,8 @@ void Telekelud::setLed(bool on){
   digitalWrite(LED_BUILTIN, on);
 }
 
-void Telekelud::sleep(int duration){
-  int count = duration/8000;
+void Telekelud::sleep(){
+  int count = _interval/8000;
   DEBUG_PRINTLN("sleep for "+String(count)+" * 8000");
   setLed(0);
 
@@ -191,4 +191,8 @@ int Telekelud::getRSSI(){
 
 float Telekelud::getSNR(){
 	return LoRa.packetSnr();
+}
+
+void Telekelud::setSenderBatt(int value){
+	_vbatSender = value;
 }

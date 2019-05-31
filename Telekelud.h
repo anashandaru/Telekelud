@@ -49,6 +49,7 @@ public:
   void configure();
   void setTemp(int value);
   void setPH(int value);
+  void setSenderBatt(int value);
   void sendMessage();
   void sendMessageEvery(long interval);
   void listenMode();
@@ -58,7 +59,7 @@ public:
   void senderServicePS();
   void repeaterServicePS();
   void setLed(bool on);
-  void sleep(int duration); // duration in seconds
+  void sleep(); // duration in seconds
   int getTemp();
   int getPH();
   int getVbatSender();
