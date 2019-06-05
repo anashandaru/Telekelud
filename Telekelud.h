@@ -1,9 +1,9 @@
 #ifndef TELEKELUD_H
   
-  #define DEBUG
+  //#define DEBUG
   #define BAND    915E6
   #define SF      12
-  #define TXP     17
+  #define TXP     20
 
 // LoRa Module SPI pin definition
   #define SCK     15

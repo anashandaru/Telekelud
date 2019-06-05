@@ -33,7 +33,7 @@ void Telekelud::start(){
 
 void Telekelud::configure(){
   LoRa.setSpreadingFactor(SF);
-  LoRa.setTxPower(TXP);
+  LoRa.setTxPower(TXP, PA_OUTPUT_PA_BOOST_PIN);
 }
 
 void Telekelud::setTemp(int value){
