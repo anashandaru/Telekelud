@@ -45,19 +45,21 @@ void Telekelud::setPH(int value){
 }
 
 void Telekelud::sendMessage(){
-  byte buff[6];
+  byte buff[8];
   buff[0] = (_temp >> 8) & 0xFF;
   buff[1] = _temp & 0xFF;
-  buff[2] = (_vbatSender >> 8) & 0xFF;
-  buff[3] = _vbatSender & 0xFF;
-  buff[4] = (_vbatRepeater >> 8) & 0xFF;
-  buff[5] = _vbatRepeater & 0xFF;
+  buff[2] = (_ph >> 8) & 0xFF;
+  buff[3] = _ph & 0xFF;
+  buff[4] = (_vbatSender >> 8) & 0xFF;
+  buff[5] = _vbatSender & 0xFF;
+  buff[6] = (_vbatRepeater >> 8) & 0xFF;
+  buff[7] = _vbatRepeater & 0xFF;
 
   LoRa.beginPacket();                   // start packet
   LoRa.write(_destinationAddress);      // add destination address
   LoRa.write(_localAddress);            // add sender address
   LoRa.write(_msgCount);                // add message ID
-  for (int i = 0; i < 6; ++i)           // add payload data
+  for (int i = 0; i < 8; ++i)           // add payload data
   {
   	LoRa.write(buff[i]);
   }
@@ -65,7 +67,8 @@ void Telekelud::sendMessage(){
 
   DEBUG_PRINT("Sending ");
   DEBUG_PRINTLN(" T: "      +String(_temp)+
-  	          " Sbat: "  +String(_vbatSender)+
+              " Tj: "      +String(_ph)+
+              " Sbat: "  +String(_vbatSender)+
   	          " Rbat: "  +String(_vbatRepeater)+
               " msgID: " +String(_msgCount));
   DEBUG_PRINTLN();
@@ -94,9 +97,9 @@ bool Telekelud::listen(){
   byte sender = LoRa.read();            // sender address
   byte incomingMsgId = LoRa.read();     // incoming msg ID
 
-  int dataCandidate[3];                 // payload of packet
+  int dataCandidate[4];                 // payload of packet
 
-  for (int i = 0; i < 3; ++i){
+  for (int i = 0; i < 4; ++i){
   	dataCandidate[i]   = LoRa.read();
   	dataCandidate[i] <<= 8;
   	dataCandidate[i]  |= LoRa.read();
@@ -109,8 +112,9 @@ bool Telekelud::listen(){
   }
 
   _temp = dataCandidate[0];
-  _vbatSender = dataCandidate[1];
-  _vbatRepeater = dataCandidate[2];
+  _ph = dataCandidate[1];
+  _vbatSender = dataCandidate[2];
+  _vbatRepeater = dataCandidate[3];
   _msgCount = incomingMsgId;
 
   DEBUG_PRINT("Received ");
@@ -163,6 +167,7 @@ void Telekelud::sleep(){
   for (int i = 0; i < count; ++i)
   {
       Watchdog.sleep(8000);
+      //delay(8000);
   }
 
   setLed(1);
