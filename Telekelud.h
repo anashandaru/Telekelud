@@ -1,6 +1,6 @@
 #ifndef TELEKELUD_H
   
-  //#define DEBUG
+  #define DEBUG
   #define BAND    915E6
   #define SF      12
   #define TXP     20
@@ -41,37 +41,46 @@
 #include "LoRa.h"
 #include "Adafruit_SleepyDog.h"
 
+struct datpac
+{
+  float gas;
+  float tm1;
+  float tm2;
+  float ph;
+  float tds;
+  float dis;
+};
+
+struct batpac
+{
+  float sender;
+  float repeater;
+};
+
 class Telekelud
 {
 public:
   Telekelud(byte localAddress, byte destinationAddress, long interval);
   void start();
   void configure();
-  void setTemp(int value);
-  void setPH(int value);
-  void setSenderBatt(int value);
+  void setPacket(datpac packet);
   void sendMessage();
   void sendMessageEvery(long interval);
   void listenMode();
   bool listen();
-  void senderService();
   void repeaterService();
   void senderServicePS();
   void repeaterServicePS();
   void setLed(bool on);
   void sleep(); // duration in seconds
-  int getTemp();
-  int getPH();
-  int getVbatSender();
-  int getVbatRepeater();
+  void writeFloat(const float& value);
+  void readFloat(float& value);
   int getRSSI();
   float getSNR();
 
 private:
-  int _temp;
-  int _ph;
-  int _vbatSender;
-  int _vbatRepeater;
+  datpac _packet;
+  batpac _batt;
   byte _msgCount;
   byte _localAddress;
   byte _destinationAddress;
