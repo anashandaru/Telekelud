@@ -150,6 +150,15 @@ void Telekelud::repeaterServicePS(){
 	listenMode();
 }
 
+int Telekelud::bat2percent(int bat){
+  // converts adc reading to battery percentage (1 - 100)
+  // 3.2v(0%) to 4.2v(100%)
+  // 551 to 651, 651 - 551 = 100
+  int result = (bat-551);
+  if(result>100) result = 100;
+  return result;
+}
+
 void Telekelud::setLed(bool on){
   digitalWrite(LED_BUILTIN, on);
 }

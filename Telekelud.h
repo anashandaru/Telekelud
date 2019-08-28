@@ -57,6 +57,7 @@ public:
   void repeaterService();
   void senderServicePS();
   void repeaterServicePS();
+  int bat2percent(int bat);
   void setLed(bool on);
   void sleep(int duration); // duration in seconds
   int getTemp();
