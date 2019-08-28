@@ -9,8 +9,6 @@ Telekelud::Telekelud(byte localAddress, byte destinationAddress, long interval){
 	_destinationAddress = destinationAddress;
 	_interval = interval;
 
-	_temp     = 0;
-	_ph       = 0;
 	_msgCount = 0;
 
 }
@@ -28,47 +26,58 @@ void Telekelud::start(){
     while (1);
   }
 
+  _batt.sender = analogRead(VBATPIN);
+
   DEBUG_PRINTLN("LoRa init succeeded.");
 }
 
 void Telekelud::configure(){
   LoRa.setSpreadingFactor(SF);
-  LoRa.setTxPower(TXP);
+  LoRa.setTxPower(TXP, PA_OUTPUT_PA_BOOST_PIN);
 }
 
-void Telekelud::setTemp(int value){
-	_temp = value;
+void Telekelud::setPacket(datpac packet){
+	_packet = packet;
 }
 
-void Telekelud::setPH(int value){
-	_ph = value;
+void Telekelud::writeFloat(const float& value){
+  LoRa.write((byte *) &value, sizeof(value));
+}
+
+void Telekelud::readFloat(float& value){
+  byte * p = (byte*) &value;
+  for (int i = 0; i < 4; ++i)
+  {
+    *p++ = LoRa.read();
+  }
 }
 
 void Telekelud::sendMessage(){
-  byte buff[6];
-  buff[0] = (_temp >> 8) & 0xFF;
-  buff[1] = _temp & 0xFF;
-  buff[2] = (_vbatSender >> 8) & 0xFF;
-  buff[3] = _vbatSender & 0xFF;
-  buff[4] = (_vbatRepeater >> 8) & 0xFF;
-  buff[5] = _vbatRepeater & 0xFF;
 
   LoRa.beginPacket();                   // start packet
   LoRa.write(_destinationAddress);      // add destination address
   LoRa.write(_localAddress);            // add sender address
   LoRa.write(_msgCount);                // add message ID
-  for (int i = 0; i < 6; ++i)           // add payload data
-  {
-  	LoRa.write(buff[i]);
-  }
+
+  writeFloat(_packet.gas);
+  writeFloat(_packet.tm1);
+  writeFloat(_packet.tm2);
+  writeFloat(_packet.ph);
+  writeFloat(_packet.tds);
+  writeFloat(_packet.dis);
+  writeFloat(_batt.sender);
+  writeFloat(_batt.repeater);
+
   LoRa.endPacket();                     // finish packet and send it
 
-  DEBUG_PRINT("Sending ");
-  DEBUG_PRINTLN(" T: "      +String(_temp)+
-  	          " Sbat: "  +String(_vbatSender)+
-  	          " Rbat: "  +String(_vbatRepeater)+
-              " msgID: " +String(_msgCount));
-  DEBUG_PRINTLN();
+  DEBUG_PRINT("Sending :");
+  DEBUG_PRINT(_packet.gas); DEBUG_PRINT(",");
+  DEBUG_PRINT(_packet.tm1); DEBUG_PRINT(",");
+  DEBUG_PRINT(_packet.tm2); DEBUG_PRINT(",");
+  DEBUG_PRINT(_packet.ph); DEBUG_PRINT(",");
+  DEBUG_PRINT(_packet.tds); DEBUG_PRINT(",");
+  DEBUG_PRINT(_packet.dis); DEBUG_PRINT(",");
+  DEBUG_PRINTLN("ends");
   
   _msgCount++;                    // increment message ID
 }
@@ -94,59 +103,53 @@ bool Telekelud::listen(){
   byte sender = LoRa.read();            // sender address
   byte incomingMsgId = LoRa.read();     // incoming msg ID
 
-  int dataCandidate[3];                 // payload of packet
-
-  for (int i = 0; i < 3; ++i){
-  	dataCandidate[i]   = LoRa.read();
-  	dataCandidate[i] <<= 8;
-  	dataCandidate[i]  |= LoRa.read();
-  }
-
   // if the recipient isn't this device or broadcast,
   if (recipient != _localAddress && recipient != 0xFF) {
     DEBUG_PRINTLN("This message is not for me.");
     return 0;                             // skip rest of function
   }
 
-  _temp = dataCandidate[0];
-  _vbatSender = dataCandidate[1];
-  _vbatRepeater = dataCandidate[2];
+  readFloat(_packet.gas);
+  readFloat(_packet.tm1);
+  readFloat(_packet.tm2);
+  readFloat(_packet.ph);
+  readFloat(_packet.tds);
+  readFloat(_packet.dis);
+  readFloat(_batt.sender);
+  readFloat(_batt.repeater);
+
   _msgCount = incomingMsgId;
 
-  DEBUG_PRINT("Received ");
-  DEBUG_PRINTLN(" from: 0x" +String(sender, HEX)+
-                " to: 0x"   +String(recipient,HEX)+
-                " id:"      +String(incomingMsgId)+
-                " T"        +String(_temp)+" Sbat"+String(_vbatSender)+" Rbat"+String(_vbatRepeater)+
-                " RSSI:"    +String(LoRa.packetRssi())+
-                " snr:"     +String(LoRa.packetSnr())
-                );
-  return 1;
-}
+  DEBUG_PRINT("Received :");
+  DEBUG_PRINT(_packet.gas); DEBUG_PRINT(",");
+  DEBUG_PRINT(_packet.tm1); DEBUG_PRINT(",");
+  DEBUG_PRINT(_packet.tm2); DEBUG_PRINT(",");
+  DEBUG_PRINT(_packet.ph); DEBUG_PRINT(",");
+  DEBUG_PRINT(_packet.tds); DEBUG_PRINT(",");
+  DEBUG_PRINT(_packet.dis); DEBUG_PRINT(",");
+  DEBUG_PRINTLN("ends");
 
-void Telekelud::senderService(){
-  _vbatSender = analogRead(VBATPIN);
-  sendMessageEvery(_interval);
+  return 1;
 }
 
 void Telekelud::repeaterService(){
 	if(!listen()) return;
-    _vbatRepeater = analogRead(VBATPIN);
+  _batt.repeater = analogRead(VBATPIN);
 	sendMessage();
 	listenMode();
 }
 
 void Telekelud::senderServicePS(){
-	sleep(_interval);
-	_vbatSender = analogRead(VBATPIN);
+	sleep();
+	_batt.sender = analogRead(VBATPIN);
 	sendMessage();
 }
 
 void Telekelud::repeaterServicePS(){
 	if(!listen()) return;
-    _vbatRepeater = analogRead(VBATPIN);
+  _batt.repeater = analogRead(VBATPIN);
 	sendMessage();
-	sleep(_interval);
+	sleep();
 	listenMode();
 }
 
@@ -163,8 +166,8 @@ void Telekelud::setLed(bool on){
   digitalWrite(LED_BUILTIN, on);
 }
 
-void Telekelud::sleep(int duration){
-  int count = duration/8000;
+void Telekelud::sleep(){
+  int count = _interval/8000;
   DEBUG_PRINTLN("sleep for "+String(count)+" * 8000");
   setLed(0);
 
@@ -172,26 +175,11 @@ void Telekelud::sleep(int duration){
   for (int i = 0; i < count; ++i)
   {
       Watchdog.sleep(8000);
+      //delay(8000);
   }
 
   setLed(1);
   DEBUG_ATTACH();
-}
-
-int Telekelud::getTemp(){
-	return _temp;
-}
-
-int Telekelud::getPH(){
-	return _ph;
-}
-
-int Telekelud::getVbatSender(){
-	return _vbatSender;
-}
-
-int Telekelud::getVbatRepeater(){
-	return _vbatRepeater;
 }
 
 int Telekelud::getRSSI(){
